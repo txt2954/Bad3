@@ -288,8 +288,9 @@ function configureCommandlineSwitchesSync(cliArgs: NativeParsedArgs) {
 
 	// Following features are disabled from the runtime:
 	// `CalculateNativeWinOcclusion` - Disable native window occlusion tracker (https://groups.google.com/a/chromium.org/g/embedder-dev/c/ZF3uHHyWLKw/m/VDN2hDXMAAAJ)
+	// `StandardizedBrowserZoom` - Disable zoom adjustment for bounding box (https://github.com/microsoft/vscode/issues/232750#issuecomment-2459495394)
 	const featuresToDisable =
-		`CalculateNativeWinOcclusion,${app.commandLine.getSwitchValue('disable-features')}`;
+		`CalculateNativeWinOcclusion,StandardizedBrowserZoom,${app.commandLine.getSwitchValue('disable-features')}`;
 	app.commandLine.appendSwitch('disable-features', featuresToDisable);
 
 	// Blink features to configure.
