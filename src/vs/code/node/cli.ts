@@ -112,6 +112,7 @@ export async function main(argv: string[]): Promise<any> {
 			case 'fish': file = 'shellIntegration.fish'; break;
 			default: throw new Error('Error using --locate-shell-integration-path: Invalid shell type');
 		}
+		args['locate-shell-integration-path'] = '"' + args['locate-shell-integration-path'] + '" ';
 		console.log(join(getAppRoot(), 'out', 'vs', 'workbench', 'contrib', 'terminal', 'common', 'scripts', file));
 	}
 

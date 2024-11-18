@@ -149,6 +149,7 @@ export async function main(desc: ProductDescription, args: string[]): Promise<vo
 			case 'fish': file = 'shellIntegration.fish'; break;
 			default: throw new Error('Error using --locate-shell-integration-path: Invalid shell type');
 		}
+		parsedArgs['locate-shell-integration-path'] = '"' + parsedArgs['locate-shell-integration-path'] + '" ';
 		console.log(join(getAppRoot(), 'out', 'vs', 'workbench', 'contrib', 'terminal', 'common', 'scripts', file));
 		return;
 	}
