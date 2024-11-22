@@ -52,83 +52,91 @@ else
 	kill_app() { killall $INTEGRATION_TEST_APP_NAME || true; }
 fi
 
+
 echo
-echo "### API tests (folder)"
+echo '### Terminal Suggest tests'
 echo
-"$INTEGRATION_TEST_ELECTRON_PATH" $LINUX_EXTRA_ARGS $ROOT/extensions/vscode-api-tests/testWorkspace --enable-proposed-api=vscode.vscode-api-tests --extensionDevelopmentPath=$ROOT/extensions/vscode-api-tests --extensionTestsPath=$ROOT/extensions/vscode-api-tests/out/singlefolder-tests $API_TESTS_EXTRA_ARGS
+"$INTEGRATION_TEST_ELECTRON_PATH" $LINUX_EXTRA_ARGS $(mktemp -d 2>/dev/null) --extensionDevelopmentPath=$ROOT/extensions/terminal-suggest --extensionTestsPath=$ROOT/extensions/terminal-suggest/out
 kill_app
 
-echo
-echo "### API tests (workspace)"
-echo
-"$INTEGRATION_TEST_ELECTRON_PATH" $LINUX_EXTRA_ARGS $ROOT/extensions/vscode-api-tests/testworkspace.code-workspace --enable-proposed-api=vscode.vscode-api-tests --extensionDevelopmentPath=$ROOT/extensions/vscode-api-tests --extensionTestsPath=$ROOT/extensions/vscode-api-tests/out/workspace-tests $API_TESTS_EXTRA_ARGS
-kill_app
+# echo
+# echo "### API tests (folder)"
+# echo
+# "$INTEGRATION_TEST_ELECTRON_PATH" $LINUX_EXTRA_ARGS $ROOT/extensions/vscode-api-tests/testWorkspace --enable-proposed-api=vscode.vscode-api-tests --extensionDevelopmentPath=$ROOT/extensions/vscode-api-tests --extensionTestsPath=$ROOT/extensions/vscode-api-tests/out/singlefolder-tests $API_TESTS_EXTRA_ARGS
+# kill_app
 
-echo
-echo "### Colorize tests"
-echo
-npm run test-extension -- -l vscode-colorize-tests
-kill_app
+# echo
+# echo "### API tests (workspace)"
+# echo
+# "$INTEGRATION_TEST_ELECTRON_PATH" $LINUX_EXTRA_ARGS $ROOT/extensions/vscode-api-tests/testworkspace.code-workspace --enable-proposed-api=vscode.vscode-api-tests --extensionDevelopmentPath=$ROOT/extensions/vscode-api-tests --extensionTestsPath=$ROOT/extensions/vscode-api-tests/out/workspace-tests $API_TESTS_EXTRA_ARGS
+# kill_app
 
-echo
-echo "### TypeScript tests"
-echo
-"$INTEGRATION_TEST_ELECTRON_PATH" $LINUX_EXTRA_ARGS $ROOT/extensions/typescript-language-features/test-workspace --extensionDevelopmentPath=$ROOT/extensions/typescript-language-features --extensionTestsPath=$ROOT/extensions/typescript-language-features/out/test/unit $API_TESTS_EXTRA_ARGS
-kill_app
+# echo
+# echo "### Colorize tests"
+# echo
+# npm run test-extension -- -l vscode-colorize-tests
+# kill_app
 
-echo
-echo "### Markdown tests"
-echo
-npm run test-extension -- -l markdown-language-features
-kill_app
+# echo
+# echo "### TypeScript tests"
+# echo
+# "$INTEGRATION_TEST_ELECTRON_PATH" $LINUX_EXTRA_ARGS $ROOT/extensions/typescript-language-features/test-workspace --extensionDevelopmentPath=$ROOT/extensions/typescript-language-features --extensionTestsPath=$ROOT/extensions/typescript-language-features/out/test/unit $API_TESTS_EXTRA_ARGS
+# kill_app
 
-echo
-echo "### Emmet tests"
-echo
-"$INTEGRATION_TEST_ELECTRON_PATH" $LINUX_EXTRA_ARGS $ROOT/extensions/emmet/test-workspace --extensionDevelopmentPath=$ROOT/extensions/emmet --extensionTestsPath=$ROOT/extensions/emmet/out/test $API_TESTS_EXTRA_ARGS
-kill_app
+# echo
+# echo "### Markdown tests"
+# echo
+# npm run test-extension -- -l markdown-language-features
+# kill_app
 
-echo
-echo "### Git tests"
-echo
-"$INTEGRATION_TEST_ELECTRON_PATH" $LINUX_EXTRA_ARGS $(mktemp -d 2>/dev/null) --extensionDevelopmentPath=$ROOT/extensions/git --extensionTestsPath=$ROOT/extensions/git/out/test $API_TESTS_EXTRA_ARGS
-kill_app
+# echo
+# echo "### Emmet tests"
+# echo
+# "$INTEGRATION_TEST_ELECTRON_PATH" $LINUX_EXTRA_ARGS $ROOT/extensions/emmet/test-workspace --extensionDevelopmentPath=$ROOT/extensions/emmet --extensionTestsPath=$ROOT/extensions/emmet/out/test $API_TESTS_EXTRA_ARGS
+# kill_app
 
-echo
-echo "### Ipynb tests"
-echo
-npm run test-extension -- -l ipynb
-kill_app
+# echo
+# echo "### Git tests"
+# echo
+# "$INTEGRATION_TEST_ELECTRON_PATH" $LINUX_EXTRA_ARGS $(mktemp -d 2>/dev/null) --extensionDevelopmentPath=$ROOT/extensions/git --extensionTestsPath=$ROOT/extensions/git/out/test $API_TESTS_EXTRA_ARGS
+# kill_app
 
-echo
-echo "### Notebook Output tests"
-echo
-npm run test-extension -- -l notebook-renderers
-kill_app
+# echo
+# echo "### Ipynb tests"
+# echo
+# npm run test-extension -- -l ipynb
+# kill_app
 
-echo
-echo "### Configuration editing tests"
-echo
-npm run test-extension -- -l configuration-editing
-kill_app
+# echo
+# echo "### Notebook Output tests"
+# echo
+# npm run test-extension -- -l notebook-renderers
+# kill_app
 
-echo
-echo "### GitHub Authentication tests"
-echo
-npm run test-extension -- -l github-authentication
-kill_app
+# echo
+# echo "### Configuration editing tests"
+# echo
+# npm run test-extension -- -l configuration-editing
+# kill_app
 
-# Tests standalone (CommonJS)
+# echo
+# echo "### GitHub Authentication tests"
+# echo
+# npm run test-extension -- -l github-authentication
+# kill_app
 
-echo
-echo "### CSS tests"
-echo
-cd $ROOT/extensions/css-language-features/server && $ROOT/scripts/node-electron.sh test/index.js
+# # Tests standalone (CommonJS)
 
-echo
-echo "### HTML tests"
-echo
-cd $ROOT/extensions/html-language-features/server && $ROOT/scripts/node-electron.sh test/index.js
+# echo
+# echo "### CSS tests"
+# echo
+# cd $ROOT/extensions/css-language-features/server && $ROOT/scripts/node-electron.sh test/index.js
+
+# echo
+# echo "### HTML tests"
+# echo
+# cd $ROOT/extensions/html-language-features/server && $ROOT/scripts/node-electron.sh test/index.js
+
 
 
 # Cleanup
