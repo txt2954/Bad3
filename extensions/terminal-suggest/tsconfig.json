@@ -6,6 +6,7 @@
 			"node",
 			"mocha"
 		],
+		"module": "commonjs",
 	},
 	"include": [
 		"src/**/*",
