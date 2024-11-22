@@ -56,7 +56,7 @@ fi
 echo
 echo '### Terminal Suggest tests'
 echo
-"$INTEGRATION_TEST_ELECTRON_PATH" $LINUX_EXTRA_ARGS $(mktemp -d 2>/dev/null) --extensionDevelopmentPath=$ROOT/extensions/terminal-suggest --extensionTestsPath=$ROOT/extensions/terminal-suggest/out
+"$INTEGRATION_TEST_ELECTRON_PATH" $LINUX_EXTRA_ARGS $(mktemp -d 2>/dev/null) --extensionDevelopmentPath=$ROOT/extensions/terminal-suggest --extensionTestsPath=$ROOT/extensions/terminal-suggest/out $API_TESTS_EXTRA_ARGS
 kill_app
 
 # echo
