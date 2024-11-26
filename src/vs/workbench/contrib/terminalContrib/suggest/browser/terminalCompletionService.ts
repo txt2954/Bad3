@@ -206,7 +206,7 @@ export class TerminalCompletionService extends Disposable implements ITerminalCo
 		dirToPrefixMap.set(cwd, '.');
 		dirToPrefixMap.set(parentCwd, '..');
 
-		const lastWord = promptValue.substring(0, cursorPosition).split(' ').pop() ?? '';
+		const lastWord = promptValue.substring(0, cursorPosition).split(' ').at(-1) ?? '';
 
 		for (const [dir, prefix] of dirToPrefixMap) {
 			const fileStat = await this._fileService.resolve(dir, { resolveSingleChildDescendants: true });
