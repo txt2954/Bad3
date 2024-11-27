@@ -19,7 +19,7 @@ import { ChatContextKeys } from '../common/chatContextKeys.js';
 import { isEqual } from '../../../../base/common/resources.js';
 import { Range } from '../../../../editor/common/core/range.js';
 import { getNotebookEditorFromEditorPane } from '../../notebook/browser/notebookBrowser.js';
-import { ctxNotebookHasEditorModification } from '../../notebook/browser/contrib/chatEdit/notebookChatEditController.js';
+import { ctxNotebookHasEditorModification, NotebookCellChatEditorController } from '../../notebook/browser/contrib/chatEdit/notebookChatEditController.js';
 
 abstract class NavigateAction extends Action2 {
 
@@ -213,7 +213,10 @@ class UndoHunkAction extends EditorAction2 {
 	}
 
 	override runEditorCommand(_accessor: ServicesAccessor, editor: ICodeEditor, ...args: any[]) {
-		ChatEditorController.get(editor)?.undoNearestChange(args[0]);
+		const controller = ChatEditorController.get(editor);
+		if (!controller?.undoNearestChange(args[0])) {
+			NotebookCellChatEditorController.get(editor)?.undoNearestChange(args[0]);
+		}
 	}
 }
 

@@ -15,7 +15,7 @@ import { diffAddDecoration, diffDeleteDecoration, diffWholeLineAddDecoration } f
 import { EditorOption } from '../../../../editor/common/config/editorOptions.js';
 import { EditOperation, ISingleEditOperation } from '../../../../editor/common/core/editOperation.js';
 import { Range } from '../../../../editor/common/core/range.js';
-import { IDocumentDiff } from '../../../../editor/common/diff/documentDiffProvider.js';
+import { IDocumentDiff, nullDocumentDiff } from '../../../../editor/common/diff/documentDiffProvider.js';
 import { IEditorContribution, ScrollType } from '../../../../editor/common/editorCommon.js';
 import { IModelDeltaDecoration, ITextModel, MinimapPosition, OverviewRulerLane, TrackedRangeStickiness } from '../../../../editor/common/model.js';
 import { ModelDecorationOptions } from '../../../../editor/common/model/textModel.js';
@@ -32,6 +32,11 @@ import { HiddenItemStrategy, MenuWorkbenchToolBar } from '../../../../platform/a
 import { URI } from '../../../../base/common/uri.js';
 
 export class ChatEditorControllerBase extends Disposable implements IEditorContribution {
+	protected readonly modifiedURI = observableValue<URI | undefined>(this, undefined);
+	protected readonly originalURI = observableValue<URI | undefined>(this, undefined);
+	protected readonly originalModel = observableValue<ITextModel | undefined>(this, undefined);
+	protected readonly state = observableValue<WorkingSetEntryState | undefined>(this, undefined);
+	protected readonly diff = observableValue<IDocumentDiff>(this, nullDocumentDiff);
 
 
 	private static _diffLineDecorationData = ModelDecorationOptions.register({ description: 'diff-line-decoration' });
@@ -52,11 +57,6 @@ export class ChatEditorControllerBase extends Disposable implements IEditorContr
 
 	constructor(
 		private readonly _editor: ICodeEditor,
-		modifiedURI: URI,
-		originalURI: URI,
-		originalModel: ITextModel,
-		private readonly state: IObservable<WorkingSetEntryState, unknown>,
-		private readonly diff: IObservable<IDocumentDiff, unknown>,
 		@IInstantiationService private readonly _instantiationService: IInstantiationService,
 		@IChatEditingService private readonly _chatEditingService: IChatEditingService,
 		@IEditorService private readonly _editorService: IEditorService
@@ -83,7 +83,15 @@ export class ChatEditorControllerBase extends Disposable implements IEditorContr
 				return;
 			}
 
+			const modifiedURI = this.modifiedURI.read(r);
+			const originalURI = this.originalURI.read(r);
+			const originalModel = this.originalModel.read(r);
 			const diff = this.diff.read(r);
+			if (!modifiedURI || !originalURI || !originalModel || diff.identical) {
+				this.clearRendering();
+				return;
+			}
+
 			this._updateWithDiff(modifiedURI, originalURI, originalModel, diff);
 			this.initNavigation();
 			if (this._currentChange.get() === undefined) {
@@ -93,6 +101,7 @@ export class ChatEditorControllerBase extends Disposable implements IEditorContr
 
 		const shouldBeReadOnly = derived(this, r => {
 			const value = this._chatEditingService.currentEditingSessionObs.read(r);
+			const modifiedURI = this.modifiedURI.read(r);
 			if (!value || value.state.read(r) !== ChatEditingSessionState.StreamingEdits) {
 				return false;
 			}

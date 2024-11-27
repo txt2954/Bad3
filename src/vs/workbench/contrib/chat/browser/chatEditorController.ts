@@ -429,9 +429,9 @@ export class ChatEditorController extends Disposable implements IEditorContribut
 		return true;
 	}
 
-	undoNearestChange(closestWidget: DiffHunkWidget | undefined): void {
+	undoNearestChange(closestWidget: DiffHunkWidget | undefined): boolean {
 		if (!this._editor.hasModel()) {
-			return;
+			return false;
 		}
 		const lineRelativeTop = this._editor.getTopForLineNumber(this._editor.getPosition().lineNumber) - this._editor.getScrollTop();
 		let closestDistance = Number.MAX_VALUE;
@@ -451,7 +451,9 @@ export class ChatEditorController extends Disposable implements IEditorContribut
 
 		if (closestWidget instanceof DiffHunkWidget) {
 			closestWidget.undo();
+			return true;
 		}
+		return false;
 	}
 
 	async openDiff(widget: DiffHunkWidget | undefined): Promise<void> {

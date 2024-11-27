@@ -94,10 +94,10 @@ export class ChatEditingModifiedNotebookFileEntry extends Disposable implements 
 	private notebookIsDisposing: boolean = false;
 	private readonly cellChangeMonitor = this._register(new DisposableStore());
 
-	private readonly _diffInfo2 = observableValue<ICellDiffInfo[]>('diffInfo', []);
+	private readonly _diffInfo = observableValue<ICellDiffInfo[]>('diffInfo', []);
 
 	get diffInfo(): IObservable<ICellDiffInfo[]> {
-		return this._diffInfo2;
+		return this._diffInfo;
 	}
 
 	get telemetryInfo(): IModifiedEntryTelemetryInfo {
@@ -181,7 +181,7 @@ export class ChatEditingModifiedNotebookFileEntry extends Disposable implements 
 		});
 		this.monitorChangesToCellContent();
 
-		this._diffInfo2.set(this.doc.cells.map((_, i) => ({ type: 'unchanged', modifiedCellIndex: i, originalCellIndex: i }) satisfies ICellDiffInfo), transaction);
+		this._diffInfo.set(this.doc.cells.map((_, i) => ({ type: 'unchanged', modifiedCellIndex: i, originalCellIndex: i }) satisfies ICellDiffInfo), transaction);
 	}
 
 	private async monitorChangesToCellContent() {
@@ -238,7 +238,7 @@ export class ChatEditingModifiedNotebookFileEntry extends Disposable implements 
 			}
 		});
 		// Restore diffs.
-		this._diffInfo2.set(snapshot.diffInfo.map(d => {
+		this._diffInfo.set(snapshot.diffInfo.map(d => {
 			if (d.type === 'modified') {
 				return {
 					...d,
@@ -349,7 +349,7 @@ export class ChatEditingModifiedNotebookFileEntry extends Disposable implements 
 					return;
 				}
 				if (edit.count === 0) {
-					const diff = this._diffInfo2.get().slice();
+					const diff = this._diffInfo.get().slice();
 					// All existing indexes are shifted by number of cells added.
 					diff.forEach(d => {
 						if (d.type !== 'delete' && d.modifiedCellIndex >= edit.index) {
@@ -363,11 +363,11 @@ export class ChatEditingModifiedNotebookFileEntry extends Disposable implements 
 						} satisfies ICellDiffInfo;
 					});
 					diff.splice(edit.index, 0, ...diffInsert);
-					this._diffInfo2.set(diff, undefined);
+					this._diffInfo.set(diff, undefined);
 				} else {
 					// All existing indexes are shifted by number of cells removed.
 					// And unchanged cells should be converted to deleted cells.
-					const diff = this._diffInfo2.get().slice().map(d => {
+					const diff = this._diffInfo.get().slice().map(d => {
 						if (d.type === 'unchanged' && d.modifiedCellIndex >= (edit.index + edit.count - 1)) {
 							// This will be deleted.
 							return {
@@ -381,7 +381,7 @@ export class ChatEditingModifiedNotebookFileEntry extends Disposable implements 
 						}
 						return d;
 					});
-					this._diffInfo2.set(diff, undefined);
+					this._diffInfo.set(diff, undefined);
 				}
 			});
 		}
@@ -528,23 +528,37 @@ export class ChatEditingModifiedNotebookFileEntry extends Disposable implements 
 
 			const index = this.doc.cells.indexOf(cell);
 			if (index >= 0) {
-				const diffInfo2 = this._diffInfo2.get().slice().map(d => {
+				const diffInfo = this._diffInfo.get().slice().map(d => {
 					if (d.type === 'modified' && d.modifiedCellIndex === index) {
+						if (diff2.identical) {
+							return {
+								modifiedCellIndex: index,
+								originalCellIndex: d.originalCellIndex,
+								type: 'unchanged'
+							} satisfies ICellDiffInfo;
+						}
 						return {
 							...d,
 							diff: diff2
 						} satisfies ICellDiffInfo;
 					} else if (d.type === 'unchanged' && d.modifiedCellIndex === index) {
+						if (diff2.identical) {
+							return {
+								modifiedCellIndex: index,
+								originalCellIndex: d.originalCellIndex,
+								type: 'unchanged'
+							} satisfies ICellDiffInfo;
+						}
 						return {
 							type: 'modified',
 							modifiedCellIndex: index,
-							originalCellIndex: index,
+							originalCellIndex: d.originalCellIndex,
 							diff: diff2
 						} satisfies ICellDiffInfo;
 					}
 					return d;
 				});
-				this._diffInfo2.set(diffInfo2, undefined);
+				this._diffInfo.set(diffInfo, undefined);
 			}
 		}
 	}
