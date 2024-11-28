@@ -21,6 +21,8 @@ import { Range } from '../../../../editor/common/core/range.js';
 import { getNotebookEditorFromEditorPane } from '../../notebook/browser/notebookBrowser.js';
 import { ctxNotebookHasEditorModification } from '../../notebook/browser/contrib/chatEdit/notebookChatEditorController.js';
 import { getChatEditorController } from './chatEditorControllerHelper.js';
+import { INotebookEditorOptions } from '../../../common/editor.js';
+import { ITextEditorOptions } from '../../../../platform/editor/common/editor.js';
 
 abstract class NavigateAction extends Action2 {
 
@@ -99,14 +101,26 @@ abstract class NavigateAction extends Action2 {
 		const entry = entries[newIdx];
 		const change = entry.kind === 'text' ? entry.diffInfo.get().changes.at(this.next ? 0 : -1) : undefined;
 
-		const newEditorPane = await editorService.openEditor({
-			resource: entry.modifiedURI,
-			options: {
-				selection: change && Range.fromPositions({ lineNumber: change.original.startLineNumber, column: 1 }),
-				revealIfOpened: false,
-				revealIfVisible: false,
+		let options: ITextEditorOptions | INotebookEditorOptions = {
+			selection: change && Range.fromPositions({ lineNumber: change.original.startLineNumber, column: 1 }),
+			revealIfOpened: false,
+			revealIfVisible: false,
+		};
+
+		if (entry.modifiedURI.path.endsWith('.ipynb') && entry.kind === 'notebook') {
+			const diff = entry.diffInfo.get().filter(d => d.type === 'modified');
+			if (diff.length) {
+				const lineNumber = diff[0].diff.changes[0].modified.startLineNumber;
+				options = {
+					cellSelection: {
+						index: diff[0].modifiedCellIndex,
+						selection: Range.fromPositions({ lineNumber, column: 1 })
+					}
+				} satisfies INotebookEditorOptions;
 			}
-		}, ACTIVE_GROUP);
+		}
+
+		const newEditorPane = await editorService.openEditor({ resource: entry.modifiedURI, options }, ACTIVE_GROUP);
 
 
 		const newEditor = newEditorPane?.getControl();

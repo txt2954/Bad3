@@ -7,7 +7,7 @@ import { isEqual } from '../../../../../../base/common/resources.js';
 import { Disposable, dispose, toDisposable } from '../../../../../../base/common/lifecycle.js';
 import { autorun, autorunWithStore, derived, IObservable, observableFromEvent, observableValue, transaction } from '../../../../../../base/common/observable.js';
 import { ICellDiffInfo, IChatEditingService, IModifiedNotebookFileEntry, WorkingSetEntryState } from '../../../../chat/common/chatEditingService.js';
-import { ICellViewModel, INotebookEditor, INotebookEditorContribution } from '../../notebookBrowser.js';
+import { ICellViewModel, INotebookEditor, INotebookEditorContribution, ScrollToRevealBehavior } from '../../notebookBrowser.js';
 import { IInstantiationService } from '../../../../../../platform/instantiation/common/instantiation.js';
 import { IConfigurationService } from '../../../../../../platform/configuration/common/configuration.js';
 import { NotebookDeletedCellDecorator, NotebookInsertedCellDecorator } from './notebookCellDecorators.js';
@@ -235,7 +235,7 @@ export class NotebookChatEditorController extends Disposable {
 		const firstCellWithChage = diffInfo.find(d => d.type === 'modified');
 		if (firstCellWithChage) {
 			const cell = model.viewCells[firstCellWithChage.modifiedCellIndex];
-			await this.notebookEditor.focusNotebookCell(cell, 'editor');
+			await this.notebookEditor.focusNotebookCell(cell, 'editor', { focusEditorLine: 1 });
 			const controller = this.getNotebookChatEditorController(cell.uri);
 			controller?.controller.revealNext();
 		}
@@ -271,13 +271,19 @@ export class NotebookChatEditorController extends Disposable {
 		if (nextCellWithChange?.type === 'modified') {
 			const cell = this.notebookEditor.getViewModel()?.viewCells[nextCellWithChange.modifiedCellIndex];
 			if (cell) {
-				this.notebookEditor.focusNotebookCell(cell, 'editor').then(() => {
-					if (next) {
-						this.getNotebookChatEditorController(cell.uri)?.controller.revealNext();
+				// Ensure to set focus to the first line, as first line could be what has the changes.
+				const focusEditorLine = next ? 1 : cell.textBuffer.getLineCount();
+				this.notebookEditor.focusNotebookCell(cell, 'editor', { focusEditorLine, revealBehavior: ScrollToRevealBehavior.fullCell }).then(() => {
+					const info = this.getNotebookChatEditorController(cell.uri);
+					if (info && (next ? info.controller.revealNext(false) : info.controller.revealPrevious(false))) {
+						const currentPosition = info.controller.currentChange.get();
+						const diff = this.getDiffAssociatedWithCell(info.cellIndex);
+						if (currentPosition && diff) {
+							this._currentChange.set({ diffInfo: diff, cellPosition: currentPosition }, undefined);
+						}
+						return true;
 					}
-					else {
-						this.getNotebookChatEditorController(cell.uri)?.controller.revealPrevious();
-					}
+
 				});
 				return true;
 			}
@@ -288,7 +294,7 @@ export class NotebookChatEditorController extends Disposable {
 		this.getNotebookChatEditorController(cell)?.controller.undoNearestChange(closestWidget);
 	}
 
-	private getNotebookChatEditorController(cellURI: URI): { cell: ICellViewModel; cellIndex: number; controller: ChatEditorControllerBase } | null {
+	private getNotebookChatEditorController(cellURI: URI): { cell: ICellViewModel; cellIndex: number; controller: ChatEditorControllerBase; editor: ICodeEditor } | null {
 		const viewModel = this.notebookEditor.getViewModel();
 		const codeEditor = this.notebookEditor.codeEditors.find(([cell, e]) => isEqual(cell.uri, cellURI));
 		if (!codeEditor?.[1] || !viewModel) {
@@ -297,7 +303,7 @@ export class NotebookChatEditorController extends Disposable {
 		const cellIndex = viewModel.viewCells.indexOf(codeEditor[0]);
 		const controller = NotebookCellChatEditorController.get(codeEditor[1]);
 		if (controller) {
-			return { cell: codeEditor[0], cellIndex, controller };
+			return { cell: codeEditor[0], cellIndex, controller, editor: codeEditor[1] };
 		}
 		return null;
 	}

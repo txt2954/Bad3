@@ -240,7 +240,8 @@ export class ChatEditorOverlayWidget implements IOverlayWidget {
 							if (diff.type === 'modified' && position && 'diffInfo' in position && position.cellPosition) {
 								const cellLineNumber = position.cellPosition.lineNumber;
 								for (const change of diff.diff.changes) {
-									if (change.modified.includes(cellLineNumber)) {
+									// For deleted lines, the diff will be empty line.
+									if (change.modified.includes(cellLineNumber) || (change.modified.isEmpty && change.modified.startLineNumber === cellLineNumber)) {
 										activeIdx = changes;
 									}
 									changes += 1;
