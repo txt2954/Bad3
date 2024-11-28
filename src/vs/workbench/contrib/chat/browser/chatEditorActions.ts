@@ -10,7 +10,7 @@ import { Action2, MenuId, registerAction2 } from '../../../../platform/actions/c
 import { KeybindingWeight } from '../../../../platform/keybinding/common/keybindingsRegistry.js';
 import { KeyCode, KeyMod } from '../../../../base/common/keyCodes.js';
 import { CHAT_CATEGORY } from './actions/chatActions.js';
-import { ChatEditorController, ctxHasEditorModification } from './chatEditorController.js';
+import { ctxHasEditorModification } from './chatEditorController.js';
 import { ContextKeyExpr } from '../../../../platform/contextkey/common/contextkey.js';
 import { EditorContextKeys } from '../../../../editor/common/editorContextKeys.js';
 import { ACTIVE_GROUP, IEditorService } from '../../../services/editor/common/editorService.js';
@@ -19,7 +19,8 @@ import { ChatContextKeys } from '../common/chatContextKeys.js';
 import { isEqual } from '../../../../base/common/resources.js';
 import { Range } from '../../../../editor/common/core/range.js';
 import { getNotebookEditorFromEditorPane } from '../../notebook/browser/notebookBrowser.js';
-import { ctxNotebookHasEditorModification, NotebookCellChatEditorController } from '../../notebook/browser/contrib/chatEdit/notebookChatEditController.js';
+import { ctxNotebookHasEditorModification } from '../../notebook/browser/contrib/chatEdit/notebookChatEditorController.js';
+import { getChatEditorController } from './chatEditorControllerHelper.js';
 
 abstract class NavigateAction extends Action2 {
 
@@ -64,7 +65,7 @@ abstract class NavigateAction extends Action2 {
 			return;
 		}
 
-		const ctrl = ChatEditorController.get(editor);
+		const ctrl = getChatEditorController(editor);
 		if (!ctrl) {
 			return;
 		}
@@ -77,8 +78,9 @@ abstract class NavigateAction extends Action2 {
 			return;
 		}
 
+		const modelURI = ctrl.modelURI.get() || editor.getModel().uri;
 		const entries = session.entries.get();
-		const idx = entries.findIndex(e => isEqual(e.modifiedURI, editor.getModel().uri));
+		const idx = entries.findIndex(e => isEqual(e.modifiedURI, modelURI));
 		if (idx < 0) {
 			return;
 		}
@@ -109,7 +111,7 @@ abstract class NavigateAction extends Action2 {
 
 		const newEditor = newEditorPane?.getControl();
 		if (isCodeEditor(newEditor)) {
-			ChatEditorController.get(newEditor)?.initNavigation();
+			getChatEditorController(newEditor)?.initNavigation();
 		}
 	}
 }
@@ -213,10 +215,7 @@ class UndoHunkAction extends EditorAction2 {
 	}
 
 	override runEditorCommand(_accessor: ServicesAccessor, editor: ICodeEditor, ...args: any[]) {
-		const controller = ChatEditorController.get(editor);
-		if (!controller?.undoNearestChange(args[0])) {
-			NotebookCellChatEditorController.get(editor)?.undoNearestChange(args[0]);
-		}
+		getChatEditorController(editor)?.undoNearestChange(args[0]);
 	}
 }
 
@@ -236,7 +235,7 @@ class OpenDiffFromHunkAction extends EditorAction2 {
 	}
 
 	override runEditorCommand(_accessor: ServicesAccessor, editor: ICodeEditor, ...args: any[]) {
-		ChatEditorController.get(editor)?.openDiff(args[0]);
+		getChatEditorController(editor)?.openDiff(args[0]);
 	}
 }
 

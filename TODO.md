@@ -8,6 +8,7 @@ text ref models of all cells (original and modified)
 Scroll those deleted cells into view.
 Undo/Redo chat session edits.
 Notice the errors
+* Zindex of overlay should be higher than cell toolbar
 
 0.17/out/client_renderer/preload.js.map'
 2

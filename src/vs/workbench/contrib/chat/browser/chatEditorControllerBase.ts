@@ -21,7 +21,7 @@ import { IModelDeltaDecoration, ITextModel, MinimapPosition, OverviewRulerLane, 
 import { ModelDecorationOptions } from '../../../../editor/common/model/textModel.js';
 import { InlineDecoration, InlineDecorationType } from '../../../../editor/common/viewModel.js';
 import { minimapGutterAddedBackground, minimapGutterDeletedBackground, minimapGutterModifiedBackground, overviewRulerAddedForeground, overviewRulerDeletedForeground, overviewRulerModifiedForeground } from '../../scm/browser/dirtydiffDecorator.js';
-import { ChatEditingSessionState, IChatEditingService, WorkingSetEntryState } from '../common/chatEditingService.js';
+import { ChatEditingSessionState, IChatEditingService, IModifiedFileEntry, WorkingSetEntryState } from '../common/chatEditingService.js';
 import { Event } from '../../../../base/common/event.js';
 import { IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
 import { MenuId } from '../../../../platform/actions/common/actions.js';
@@ -31,13 +31,27 @@ import { Selection } from '../../../../editor/common/core/selection.js';
 import { HiddenItemStrategy, MenuWorkbenchToolBar } from '../../../../platform/actions/browser/toolbar.js';
 import { URI } from '../../../../base/common/uri.js';
 
-export class ChatEditorControllerBase extends Disposable implements IEditorContribution {
-	protected readonly modifiedURI = observableValue<URI | undefined>(this, undefined);
-	protected readonly originalURI = observableValue<URI | undefined>(this, undefined);
-	protected readonly originalModel = observableValue<ITextModel | undefined>(this, undefined);
-	protected readonly state = observableValue<WorkingSetEntryState | undefined>(this, undefined);
-	protected readonly diff = observableValue<IDocumentDiff>(this, nullDocumentDiff);
+export interface IChatEditorController {
+	modelURI: IObservable<URI | undefined>;
+	revealNext(strict?: boolean): boolean;
+	revealPrevious(strict?: boolean): boolean;
+	initNavigation(): void;
+	undoNearestChange(closestWidget: DiffHunkWidget | undefined): void;
+	openDiff(widget: DiffHunkWidget | undefined): Promise<void>;
+}
 
+export class ChatEditorControllerBase extends Disposable implements IEditorContribution, IChatEditorController {
+	protected readonly originalModel = observableValue<ITextModel | undefined>(this, undefined);
+	protected readonly diff = observableValue<IDocumentDiff>(this, nullDocumentDiff);
+	protected readonly _entry = observableValue<IModifiedFileEntry | undefined>(this, undefined);
+
+	public get entry(): IObservable<IModifiedFileEntry | undefined> {
+		return this._entry;
+	}
+
+	public get modelURI(): IObservable<URI | undefined> {
+		return this.entry.map(m => m?.modifiedURI);
+	}
 
 	private static _diffLineDecorationData = ModelDecorationOptions.register({ description: 'diff-line-decoration' });
 
@@ -48,7 +62,7 @@ export class ChatEditorControllerBase extends Disposable implements IEditorContr
 
 	private _viewZones: string[] = [];
 	private readonly _hasEditorModification = observableValue<boolean>('hasEditorModification', false);
-	public get hasEditorModification(): IObservable<boolean> {
+	protected get hasEditorModification(): IObservable<boolean> {
 		return this._hasEditorModification;
 	}
 
@@ -56,7 +70,7 @@ export class ChatEditorControllerBase extends Disposable implements IEditorContr
 	readonly currentChange: IObservable<Position | undefined> = this._currentChange;
 
 	constructor(
-		private readonly _editor: ICodeEditor,
+		protected readonly _editor: ICodeEditor,
 		@IInstantiationService private readonly _instantiationService: IInstantiationService,
 		@IChatEditingService private readonly _chatEditingService: IChatEditingService,
 		@IEditorService private readonly _editorService: IEditorService
@@ -68,6 +82,8 @@ export class ChatEditorControllerBase extends Disposable implements IEditorContr
 			_ => undefined
 		);
 
+		const modelObs = observableFromEvent(this._editor.onDidChangeModel, _ => this._editor.getModel());
+
 		this._register(autorun(r => {
 
 			if (this._editor.getOption(EditorOption.inDiffEditor)) {
@@ -76,32 +92,40 @@ export class ChatEditorControllerBase extends Disposable implements IEditorContr
 			}
 
 			configSignal.read(r);
+			modelObs.read(r);
 
-			const state = this.state.read(r);
-			if (state !== WorkingSetEntryState.Modified) {
+			const entry = this.entry.read(r);
+			const state = entry?.state.read(r);
+			if (!entry || state !== WorkingSetEntryState.Modified) {
 				this.clearRendering();
 				return;
 			}
 
-			const modifiedURI = this.modifiedURI.read(r);
-			const originalURI = this.originalURI.read(r);
 			const originalModel = this.originalModel.read(r);
 			const diff = this.diff.read(r);
-			if (!modifiedURI || !originalURI || !originalModel || diff.identical) {
+			if (!originalModel || diff.identical) {
 				this.clearRendering();
 				return;
 			}
 
-			this._updateWithDiff(modifiedURI, originalURI, originalModel, diff);
+			this._updateWithDiff(entry.modifiedURI, entry.originalURI, originalModel, diff);
 			this.initNavigation();
 			if (this._currentChange.get() === undefined) {
 				this.revealNext();
 			}
 		}));
 
+		this._register(autorun(r => {
+			const modifiedURI = this.entry.read(r)?.modifiedURI;
+			const value = this._chatEditingService.currentEditingSessionObs.read(r);
+			if (modifiedURI && value) {
+				this._entry.set(value.entries.read(r).find(e => isEqual(e.modifiedURI, modifiedURI)), undefined);
+			}
+		}));
+
 		const shouldBeReadOnly = derived(this, r => {
 			const value = this._chatEditingService.currentEditingSessionObs.read(r);
-			const modifiedURI = this.modifiedURI.read(r);
+			const modifiedURI = this.entry.read(r)?.modifiedURI;
 			if (!value || value.state.read(r) !== ChatEditingSessionState.StreamingEdits) {
 				return false;
 			}

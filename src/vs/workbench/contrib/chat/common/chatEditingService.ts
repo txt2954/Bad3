@@ -202,23 +202,31 @@ interface IModifiedAnyFileEntry extends IDisposable {
 	resetToInitialValue(): Promise<void>;
 }
 
+/**
+ * All entries will contain a IDocumentDiff
+ * Even when there are no changes, diff will contain the number of lines in the document.
+ * This way we can always calculate the total number of lines in the document.
+ */
 export type ICellDiffInfo = {
 	originalCellIndex: number;
 	modifiedCellIndex: number;
 	type: 'unchanged';
+	diff: IDocumentDiff; // Null diff Change (property to be consistent with others, also we have a list of all line numbers)
 } | {
 	originalCellIndex: number;
 	modifiedCellIndex: number;
 	type: 'modified';
-	diff: IDocumentDiff;
+	diff: IDocumentDiff; // List of the changes.
 } |
 {
 	originalCellIndex: number;
 	type: 'delete';
+	diff: IDocumentDiff; // List of all the lines deleted.
 } |
 {
 	modifiedCellIndex: number;
 	type: 'insert';
+	diff: IDocumentDiff; // List of all the new lines.
 };
 
 

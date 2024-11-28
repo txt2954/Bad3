@@ -20,7 +20,6 @@ import { ChatEditingNotebookFileSystemProvider } from '../../../notebook/browser
 import { Emitter, Event } from '../../../../../base/common/event.js';
 import { IObservable, ITransaction, observableValue, transaction } from '../../../../../base/common/observable.js';
 import { nullDocumentDiff } from '../../../../../editor/common/diff/documentDiffProvider.js';
-import { TextEdit } from '../../../../../editor/common/languages.js';
 import { INotebookTextModel, ICellEditOperation, IResolvedNotebookEditorModel, ICell, CellEditType } from '../../../notebook/common/notebookCommon.js';
 import { Disposable, DisposableStore, IReference } from '../../../../../base/common/lifecycle.js';
 import { IChatService } from '../../common/chatService.js';
@@ -37,6 +36,10 @@ import { NotebookTextModel } from '../../../notebook/common/model/notebookTextMo
 import { ITextModelService } from '../../../../../editor/common/services/resolverService.js';
 import { ITextModel } from '../../../../../editor/common/model.js';
 import { INotebookEditorModelResolverService } from '../../../notebook/common/notebookEditorModelResolverService.js';
+import { TextEdit } from '../../../../../editor/common/languages.js';
+import { DetailedLineRangeMapping, RangeMapping } from '../../../../../editor/common/diff/rangeMapping.js';
+import { Range } from '../../../../../editor/common/core/range.js';
+import { LineRange } from '../../../../../editor/common/core/lineRange.js';
 
 export class ChatEditingModifiedNotebookFileEntry extends Disposable implements IModifiedNotebookFileEntry {
 	public readonly kind = 'notebook';
@@ -181,7 +184,7 @@ export class ChatEditingModifiedNotebookFileEntry extends Disposable implements 
 		});
 		this.monitorChangesToCellContent();
 
-		this._diffInfo.set(this.doc.cells.map((_, i) => ({ type: 'unchanged', modifiedCellIndex: i, originalCellIndex: i }) satisfies ICellDiffInfo), transaction);
+		this._diffInfo.set(this.doc.cells.map((_, i) => ({ type: 'unchanged', modifiedCellIndex: i, originalCellIndex: i, diff: nullDocumentDiff }) satisfies ICellDiffInfo), transaction);
 	}
 
 	private async monitorChangesToCellContent() {
@@ -356,10 +359,21 @@ export class ChatEditingModifiedNotebookFileEntry extends Disposable implements 
 							d.modifiedCellIndex += edit.cells.length;
 						}
 					});
-					const diffInsert = edit.cells.map((_, i) => {
+					const diffInsert = edit.cells.map((c, i) => {
+						const lines = c.source.split('\n');
+						const originalRange = new Range(1, 0, 1, 0);
+						const modifiedRange = new Range(1, 0, lines.length, lines[lines.length - 1].length);
+						const innerChanges = new RangeMapping(originalRange, modifiedRange);
+						const changes = [new DetailedLineRangeMapping(new LineRange(1, 1), new LineRange(1, lines.length), [innerChanges])];
 						return {
 							type: 'insert' as const,
 							modifiedCellIndex: edit.index + i,
+							diff: {
+								changes,
+								identical: false,
+								moves: [],
+								quitEarly: false
+							}
 						} satisfies ICellDiffInfo;
 					});
 					diff.splice(edit.index, 0, ...diffInsert);
@@ -369,10 +383,23 @@ export class ChatEditingModifiedNotebookFileEntry extends Disposable implements 
 					// And unchanged cells should be converted to deleted cells.
 					const diff = this._diffInfo.get().slice().map(d => {
 						if (d.type === 'unchanged' && d.modifiedCellIndex >= (edit.index + edit.count - 1)) {
+							const originalCell = this.originalModel.cells[d.originalCellIndex];
+							const lines = new Array(originalCell.textBuffer.getLineCount()).fill(0).map((_, i) => originalCell.textBuffer.getLineContent(i + 1));
+							const originalRange = new Range(1, 0, lines.length, lines[lines.length - 1].length);
+							const modifiedRange = new Range(1, 0, 1, 0);
+							const innerChanges = new RangeMapping(modifiedRange, originalRange);
+							const changes = [new DetailedLineRangeMapping(new LineRange(1, lines.length), new LineRange(1, 1), [innerChanges])];
+
 							// This will be deleted.
 							return {
 								type: 'delete' as const,
 								originalCellIndex: d.originalCellIndex,
+								diff: {
+									changes,
+									identical: false,
+									moves: [],
+									quitEarly: false
+								}
 							} satisfies ICellDiffInfo;
 						}
 						if (d.type !== 'delete' && d.modifiedCellIndex >= (edit.index + edit.count)) {
@@ -534,7 +561,8 @@ export class ChatEditingModifiedNotebookFileEntry extends Disposable implements 
 							return {
 								modifiedCellIndex: index,
 								originalCellIndex: d.originalCellIndex,
-								type: 'unchanged'
+								type: 'unchanged',
+								diff: nullDocumentDiff
 							} satisfies ICellDiffInfo;
 						}
 						return {
@@ -546,7 +574,8 @@ export class ChatEditingModifiedNotebookFileEntry extends Disposable implements 
 							return {
 								modifiedCellIndex: index,
 								originalCellIndex: d.originalCellIndex,
-								type: 'unchanged'
+								type: 'unchanged',
+								diff: nullDocumentDiff
 							} satisfies ICellDiffInfo;
 						}
 						return {
